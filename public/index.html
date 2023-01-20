@@ -93,25 +93,26 @@
         });
       }
 
+      const vertex = `#version 300 es
+
+        precision highp float;
+        layout (location=0) in vec4 position;
+        layout (location=1) in vec2 tex;
+
+        out vec2 vTex;
+
+        void main() {
+            vTex = tex;
+            gl_Position = position;
+        }
+      `;
+
       const config = {
         showDebugInfo: true,
         programs: [
           {
               id: "sample-texture",
-              vertex: 
-              `#version 300 es
-
-                precision highp float;
-                layout (location=0) in vec4 position;
-                layout (location=1) in vec2 tex;
-                
-                out vec2 vTex;
-
-                void main() {
-                    vTex = tex;
-                    gl_Position = position;
-                }
-              `,
+              vertex,
               fragment:
               `#version 300 es
 
@@ -128,20 +129,7 @@
             },
             {
               id: "sample-color",
-              vertex: 
-              `#version 300 es
-
-                precision highp float;
-                layout (location=0) in vec4 position;
-                layout (location=1) in vec2 tex;
-                
-                out vec2 vTex;
-
-                void main() {
-                    vTex = tex;
-                    gl_Position = position;
-                }
-              `,
+              vertex,
               fragment:
               `#version 300 es
 
@@ -177,12 +165,24 @@
       </div>
       <div>
         <label for="program">Program:</label>
-        <select id="program" onchange="controller?.setActiveProgram(this.value)">
+        <select id="program" onchange="controller?.setActiveProgram(this.value); updateDescription()">
           <option value="sample-texture" selected>texture</option>
           <option value="sample-color">color</option>
         </select>
       </div>
     </div>
+
+    <div id="description" style="position: fixed; right: 20px; bottom: 20px; white-space: pre;"></div>
+    <script>
+      function updateDescription() {
+        const descDiv = document.getElementById("description");
+        const programValue = document.getElementById("program");
+        descDiv.textContent = programValue.value === "sample-texture" ?
+          `This demo is for displaying an image by uploading a texture along with its coordinates.`
+          : `Displaying a gradient using the same texture coordinates to alter the color.`;
+      }
+      updateDescription();
+    </script>
 
     <div id="root"></div>
 	</body>
