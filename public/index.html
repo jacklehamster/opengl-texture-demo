@@ -6,112 +6,109 @@
     <script>
       const controller = {};
 
-      function initialize(gl) {
+      async function initialize(gl) {
         const triangleArray = gl.createVertexArray();
-          gl.bindVertexArray(triangleArray);
+        gl.bindVertexArray(triangleArray);
 
-          const positionLocation = controller.getAttributeLocation("position");
-          const positions = positionLocation >= 0 ? new Float32Array([
-              0.0, 0.5, 0.0,
-              -0.5, -0.5, 0.0,
-              0.5, -0.5, 0.0,
-          ]) : undefined;
-          const positionBuffer = positionLocation >= 0 ? gl.createBuffer() : undefined;
-          if (positionLocation >= 0) {
-            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-            gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(positionLocation);
-          }
+        const positionLocation = controller.getAttributeLocation("position");
+        const positions = positionLocation >= 0 ? new Float32Array([
+            -0.5, 0.5, 0.0,
+            -0.5, -0.5, 0.0,
+            0.5, -0.5, 0.0,
+            -0.5, 0.5, 0.0,
+            0.5, -0.5, 0.0,
+            0.5, 0.5, 0.0,
+        ]) : undefined;
+        const positionBuffer = positionLocation >= 0 ? gl.createBuffer() : undefined;
+        if (positionLocation >= 0) {
+          gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+          gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+          gl.enableVertexAttribArray(positionLocation);
+        }
 
-          const colorLocation = controller.getAttributeLocation("color");
-          const colors = colorLocation >= 0 ? new Float32Array([
-              1.0, 0.0, 0.0,
-              0.0, 1.0, 0.0,
-              0.0, 0.0, 1.0
-          ]) : undefined;
-          const colorBuffer = colorLocation >= 0 ? gl.createBuffer() : undefined;
-          if (colorLocation >= 0) {
-            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);SubtleCrypto
-            gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
-            gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(colorLocation);
-          }
+        const texLocation = controller.getAttributeLocation("tex");
+        const texCoordinates = texLocation >= 0 ? new Float32Array([
+            0, 0,
+            0, 1,
+            1, 1,
+            0, 0,
+            1, 1,
+            1, 0,
+        ]) : undefined;
+        const texBuffer = texLocation >= 0 ? gl.createBuffer() : undefined;
+        if (texLocation >= 0) {
+          gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, texCoordinates, gl.STATIC_DRAW);
+          gl.vertexAttribPointer(texLocation, 2, gl.FLOAT, false, 0, 0);
+          gl.enableVertexAttribArray(texLocation);
+        }
 
-        return {triangleArray, positions, positionBuffer, colors, colorBuffer, positionLocation, colorLocation};
+        const texture = await loadTexture(gl);
+
+        return {triangleArray, positions, positionBuffer, texCoordinates, texBuffer, positionLocation, texLocation, texture};
       }
 
-      function dispose(gl, {triangleArray, positions, positionBuffer, colors, colorBuffer, positionLocation, colorLocation}) {
+      async function loadTexture(gl) {
+        const textureLocation = controller.getUniformLocation("uTexture");
+        gl.uniform1i(textureLocation, 0);
+        gl.activeTexture(gl.TEXTURE0);
+
+        return new Promise((resolve) => {
+          const image = new Image();
+          image.src = "sample.png";
+          image.addEventListener("load", () => {
+            const texture = gl.createTexture();
+      			gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            resolve(texture);
+          });
+        });
+      }
+
+      function dispose(gl, {triangleArray, positions, positionBuffer, texCoordinates, texBuffer, positionLocation, texLocation, texture}) {
         gl.deleteVertexArray(triangleArray);
         delete positions;
-        delete colors;
+        delete texCoordinates;
         gl.deleteBuffer(positionBuffer);
-        gl.deleteBuffer(colorBuffer);
+        gl.deleteBuffer(texBuffer);
         if (positionLocation >= 0) {
           gl.disableVertexAttribArray(positionLocation);
         }
-        if (colorLocation >= 0) {
-          gl.disableVertexAttribArray(colorLocation);
+        if (texLocation >= 0) {
+          gl.disableVertexAttribArray(texLocation);
         }
+        gl.deleteTexture(texture);
       }
 
-      function staticRefresh(gl) {
-        const resources = initialize(gl);
-        const {triangleArray, positions, positionBuffer, colors, colorBuffer} = resources;
-        ////////////////
-        // DRAW
-        ////////////////
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
-
-        dispose(gl, resources);
-      }
-
-      function animatedRefresh(gl) {
-        const resources = initialize(gl);
-        const {triangleArray, positions, positionBuffer, colors, colorBuffer} = resources;
-
-        ////////////////
-        // DRAW
-        ////////////////
-        let id;
-        const loop = (time) => {
-          //  update position
-          if (time) {
-            positions[0] = Math.sin(time / 100);
-            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.drawArrays(gl.TRIANGLES, 0, 3);
-          }
-          id = requestAnimationFrame(loop);
-        };
-
-        loop(0);
-
-        return () => {
+      function refresh(gl) {
+        const resources = initialize(gl).then(() => {
+          const {triangleArray, positions, positionBuffer} = resources;
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
           dispose(gl, resources);
-          cancelAnimationFrame(id);
-        };
+        });
       }
 
       const config = {
         showDebugInfo: true,
         programs: [
           {
-              id: "sample-multicolor",
+              id: "sample-texture",
               vertex: 
               `#version 300 es
 
                 precision highp float;
                 layout (location=0) in vec4 position;
-                layout (location=1) in vec3 color;
+                layout (location=1) in vec2 tex;
                 
-                out vec3 vColor;
+                out vec2 vTex;
 
                 void main() {
-                    vColor = color;
+                    vTex = tex;
                     gl_Position = position;
                 }
               `,
@@ -119,23 +116,29 @@
               `#version 300 es
 
                 precision highp float;
-                in vec3 vColor;
+                uniform sampler2D uTexture;
+
+                in vec2 vTex;
                 out vec4 fragColor;
 
                 void main() {
-                    fragColor = vec4(vColor, 1.0);
+                    fragColor = texture(uTexture, vTex);
                 }
               `
             },
-          {
-              id: "sample-red",
+            {
+              id: "sample-color",
               vertex: 
               `#version 300 es
 
                 precision highp float;
-                in vec4 position;
+                layout (location=0) in vec4 position;
+                layout (location=1) in vec2 tex;
+                
+                out vec2 vTex;
 
                 void main() {
+                    vTex = tex;
                     gl_Position = position;
                 }
               `,
@@ -143,38 +146,18 @@
               `#version 300 es
 
                 precision highp float;
+                uniform sampler2D uTexture;
+
+                in vec2 vTex;
                 out vec4 fragColor;
 
                 void main() {
-                    fragColor = vec4(0.5, 0.0, 0.0, 1.0);
-                }
-              `
-          },
-          {
-              id: "sample-blue",
-              vertex: 
-              `#version 300 es
-
-                precision highp float;
-                in vec4 position;
-
-                void main() {
-                    gl_Position = position;
-                }
-              `,
-              fragment:
-              `#version 300 es
-
-                precision highp float;
-                out vec4 fragColor;
-
-                void main() {
-                    fragColor = vec4(0.0, 0.0, 0.5, 1.0);
+                   fragColor = vec4(vTex, 0.0, 1.0);
                 }
               `
             },
         ],
-        onRefresh: staticRefresh,
+        onRefresh: refresh,
       };
 
       document.addEventListener("DOMContentLoaded", () => {
@@ -195,21 +178,11 @@
       <div>
         <label for="program">Program:</label>
         <select id="program" onchange="controller?.setActiveProgram(this.value)">
-          <option value="sample-multicolor" selected>Sample Multicolor</option>
-          <option value="sample-red">Sample Red</option>
-          <option value="sample-blue">Sample Blue</option>
-        </select>
-      </div>
-      <div>
-        <label for="refresh">Refresh:</label>
-        <select id="refresh" onchange="controller?.setRefresh(this.value === 'static' ? staticRefresh : animatedRefresh)">
-          <option value="static" selected>static</option>
-          <option value="animated">animated</option>
+          <option value="sample-texture" selected>texture</option>
+          <option value="sample-color">color</option>
         </select>
       </div>
     </div>
-
-
 
     <div id="root"></div>
 	</body>
