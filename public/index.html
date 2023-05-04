@@ -6,11 +6,11 @@
     <script>
       const controller = {};
 
-      async function initialize(gl) {
+      async function initialize(gl, getAttributeLocation, getUniformLocation) {
         const triangleArray = gl.createVertexArray();
         gl.bindVertexArray(triangleArray);
 
-        const positionLocation = controller.getAttributeLocation("position");
+        const positionLocation = getAttributeLocation("position");
         const positions = positionLocation >= 0 ? new Float32Array([
             -0.5, 0.5, 0.0,
             -0.5, -0.5, 0.0,
@@ -27,7 +27,7 @@
           gl.enableVertexAttribArray(positionLocation);
         }
 
-        const texLocation = controller.getAttributeLocation("tex");
+        const texLocation = getAttributeLocation("tex");
         const texCoordinates = texLocation >= 0 ? new Float32Array([
             0, 0,
             0, 1,
@@ -44,13 +44,13 @@
           gl.enableVertexAttribArray(texLocation);
         }
 
-        const texture = await loadTexture(gl);
+        const texture = await loadTexture(gl, getUniformLocation);
 
         return {triangleArray, positions, positionBuffer, texCoordinates, texBuffer, positionLocation, texLocation, texture};
       }
 
-      async function loadTexture(gl) {
-        const textureLocation = controller.getUniformLocation("uTexture");
+      async function loadTexture(gl, getUniformLocation) {
+        const textureLocation = getUniformLocation("uTexture");
         gl.uniform1i(textureLocation, 0);
         gl.activeTexture(gl.TEXTURE0);
 
@@ -84,8 +84,8 @@
         gl.deleteTexture(texture);
       }
 
-      function refresh(gl) {
-        const resources = initialize(gl).then(() => {
+      function refresh({gl, getAttributeLocation, getUniformLocation}) {
+        const resources = initialize(gl, getAttributeLocation, getUniformLocation).then(() => {
           const {triangleArray, positions, positionBuffer} = resources;
           gl.clear(gl.COLOR_BUFFER_BIT);
           gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -145,7 +145,7 @@
               `
             },
         ],
-        onRefresh: refresh,
+        onChange: refresh,
       };
 
       document.addEventListener("DOMContentLoaded", () => {
